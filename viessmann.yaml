@@ -1,12 +1,12 @@
 substitutions:
   device: viessmann
-  name: Viessmann Optolink
+  name: VitoWiFi
   version: "0.0.1"
 
 esphome:
   name: ${device}
-  platform: ESP32
-  board: nodemcu-32s
+  platform: ESP8266
+  board: d1_mini
   includes:
     - components/optolink
   libraries:
