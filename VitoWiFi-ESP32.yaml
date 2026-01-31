@@ -1,0 +1,205 @@
+esphome:
+  name: "vitowifi-esp32"
+  friendly_name: VitoWIFI ESP32
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino
+
+# WiFi Konfiguration
+api:
+  encryption:
+    key: !secret esphome_api_key
+
+ota:
+  - platform: esphome
+    password: !secret esphome_api
+
+web_server:
+  port: 80
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  min_auth_mode: WPA2
+  domain: .fritz.box
+  manual_ip:
+    static_ip: 192.168.178.91
+    gateway: 192.168.178.1
+    subnet: 255.255.255.0
+    dns1: 192.168.178.6
+
+logger:
+  level: INFO
+  hardware_uart: UART1
+  # Hardware UART deaktivieren, da wir sie für Optolink brauchen
+#  baud_rate: 0
+  # Alternativ: Logging über Software Serial auf anderen Pins
+  # tx_buffer_size: 512
+  # hardware_uart: UART1  # Nicht verfügbar auf ESP8266u
+
+external_components:
+  #- source: github://pr#4453
+  #  components: [ optolink ]
+  - source: github://j0ta29/esphome@optolink
+    components: [optolink]
+    refresh: 1d
+
+optolink:
+#  id: optolink_bus
+#  uart_id: uart_bus
+  logger: false
+  protocol: P300
+  rx_pin: GPIO1
+  tx_pin: GPIO3
+#  update_interval: 30s
+
+# Rest der Konfiguration bleibt gleich...
+
+sensor:
+  - platform: optolink
+    name: Brennerstarts
+    address: 0x088A
+    bytes: 4
+    icon: "mdi:ray-start-arrow"
+  - platform: optolink
+    name: Kesseltemperatur
+    address: 0x0802
+    bytes: 2
+    div_ratio: 10
+    unit_of_measurement: °C
+    device_class: temperature
+    update_interval: 60s
+  - platform: optolink
+    name: Aussentemperatur
+    address: 0x0800
+    bytes: 2
+    div_ratio: 10
+    unit_of_measurement: °C
+    device_class: temperature
+    update_interval: 60s
+    icon: "mdi:sun-thermometer"
+  - platform: optolink
+    name: Speichertemperatur
+    address: 0x0804
+    bytes: 2
+    div_ratio: 10
+    unit_of_measurement: °C
+    device_class: temperature
+    update_interval: 60s
+    icon: "mdi:water-thermometer"
+  - platform: optolink
+    name: Betriebsstunden
+    id: betrieb
+    address: 0x8A7
+    bytes: 4
+    unit_of_measurement: "h"
+    accuracy_decimals: 1
+    update_interval: 60s 
+    icon: "mdi:clock-start"
+    filters:
+      - lambda: return x / 3600.0;
+    # Uptime Sensor - Zeit seit letztem rebbot
+  - platform: uptime
+    name: Uptime Sensor
+    update_interval: 60min
+    # Ermittlung der WLAN-Signalstärke alle 60s 
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60min
+
+binary_sensor:
+   - platform: optolink
+     name: Störung
+     address: 0x0A82
+     icon: "mdi:alarm-light"
+   - platform: optolink
+     name: Brenner Status
+     address: 0x0842 #0x55D3
+     icon: "mdi:gas-burner"
+   - platform: optolink
+     name: Partybetrieb Status
+     address: 0x2303
+     icon: "mdi:party-popper"
+   - platform: optolink
+     name: Sparbetrieb Status
+     address: 0x2302
+     icon: mdi:snowflake-alert
+
+number:
+  - platform: optolink
+    name: Raumtemperatur Soll
+    unit_of_measurement: °C
+    address: 0x2306
+    bytes: 1
+    min_value: 3
+    max_value: 28
+    step: 1
+    mode: box
+    icon: "mdi:home-thermometer"
+    device_class: temperature
+  - platform: optolink
+    name: Speichertemperatur Soll
+    unit_of_measurement: °C
+    address: 0x6300
+    bytes: 1
+    min_value: 30
+    max_value: 70
+    step: 1
+    mode: box
+    icon: "mdi:water-thermometer"
+    device_class: temperature
+  
+select:
+  - platform: optolink
+    name: Betriebsart
+    address: 0x2323
+    bytes: 1
+    map:
+      - "0 -> Aus"
+      - "1 -> nur Warmwasser"
+      - "2 -> Heizen und Warmwasser"
+
+switch:
+  - platform: optolink
+    id: Partybetrieb_sw
+    name: Partybetrieb
+    address: 0x2330
+    icon: mdi:party-popper
+  - platform: optolink
+    id: sparbetrieb_sw
+    name: Sparbetrieb
+    address: 0x2331
+    icon: mdi:snowflake-alert
+
+button:
+  - platform: restart
+    name: "Restart"
+  - platform: shutdown
+    name: "Shutdown"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP"
+    mac_address:
+      name: "Mac"
+  - platform: optolink
+    name: Error history 1
+    address: 0x7590
+    bytes: 9
+    type: RAW
+    
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+#text:
+#  - platform: optolink
+#     name: Warm water schedule Monday
+#     address: 0x2100
+#     bytes: 56
+#     type: DAY_SCHEDULE
+#     day_of_week: MONDAY
+#     icon: mdi:shower
