@@ -1,6 +1,6 @@
 ESP8266/ESP32 VitoWifi example for ESPHome
 ==========================================
-
+VIESSMANN Vitotronic 200, type KO1B weather-compensated boiler and heating circuit control
 Example code for using an ESP32 / ESP8266 as a sensor for Viessmann optolink.
 
 Tested with OptoLink ESP8266 / ESP32 adapter from here:<br/>
